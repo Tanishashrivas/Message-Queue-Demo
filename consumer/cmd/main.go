@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 
+	"github.com/joho/godotenv"
 	"github.com/tanishashrivas/message-queue/internal"
 )
 
@@ -14,7 +16,13 @@ type application struct {
 }
 
 func main() {
+	if err := godotenv.Load(); err != nil {
+		log.Printf("Could not load .env file: %v", err)
+	}
+
+	log.Println("Initializing MQGateway...")
 	mqGateway := internal.NewMQGateway()
+	log.Println("Initializing Redis client...")
 	rdsClient := internal.NewRedisClient()
 
 	app := &application{
@@ -27,11 +35,13 @@ func main() {
 }
 
 func (app *application) ServeHTTP() {
+	addr := fmt.Sprintf("%s:%s", os.Getenv("HOST"), "6060")
+	log.Printf("Server will listen on %s", addr)
 	server := &http.Server{
-		Addr: fmt.Sprintf("%s:%d", os.Getenv("HOST"), os.Getenv("PORT")),
+		Addr: addr,
 	}
 
 	if err := server.ListenAndServe(); err != nil {
-		fmt.Errorf("Failed to start the consumer", err)
+		log.Fatalf("Failed to start the consumer: %v", err)
 	}
 }

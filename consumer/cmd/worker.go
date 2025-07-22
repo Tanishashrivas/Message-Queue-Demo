@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"log"
 
 	"github.com/tanishashrivas/message-queue/internal"
 )
@@ -12,23 +12,21 @@ func (app *application) StartOrderWorker() {
 	for {
 		order, err := app.Redis.ConsumeFromQueue(context.Background(), "orders-queue")
 		if err != nil {
-			fmt.Errorf("Failed to consume message from the queue", err)
-			return
+			log.Printf("Failed to consume message from the queue: %v", err)
+			continue
 		}
 
-		fmt.Println("Order: ", order)
-		orderJSON, err := json.Marshal(order)
-		if err != nil {
-			fmt.Errorf("Failed to marshal order to JSON", err)
-			return
+		log.Printf("Received order: %s", order)
+
+		var orderReq internal.CreateOrderReq
+		if err := json.Unmarshal([]byte(order), &orderReq); err != nil {
+			log.Printf("Failed to unmarshal order JSON: %v", err)
+			continue
 		}
 
-		var orderRes internal.OrderRes
-		if err := json.Unmarshal(orderJSON, &orderRes); err != nil {
-			fmt.Errorf("Failed to unrmarshal order to JSON by the consumer", err)
-			return
-		}
+		log.Printf("Processing order with ID: %s, Item: %s, Quantity: %d",
+			orderReq.Id, orderReq.Item, orderReq.Quantity)
 
-		fmt.Sprintf("Order with Id: %s processed successfully", orderRes.Id)
+		log.Printf("Order with ID: %s processed successfully", orderReq.Id)
 	}
 }
